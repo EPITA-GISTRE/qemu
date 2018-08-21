@@ -2997,7 +2997,6 @@ int main(int argc, char **argv, char **envp)
 
             popt = lookup_opt(argc, argv, &optarg, &optind);
             switch (popt->index) {
-            case QEMU_OPTION_nodefconfig:
             case QEMU_OPTION_nouserconfig:
                 userconfig = false;
                 break;
@@ -3925,7 +3924,6 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_enable_sync_profile:
                 qsp_enable();
                 break;
-            case QEMU_OPTION_nodefconfig:
             case QEMU_OPTION_nouserconfig:
                 /* Nothing to be parsed here. Especially, do not error out below. */
                 break;
