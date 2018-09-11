@@ -21,6 +21,7 @@
 #include "qemu-version.h"
 #include <sys/syscall.h>
 #include <sys/resource.h>
+#include <unicorn/unicorn.h>
 
 #include "qapi/error.h"
 #include "qemu.h"
@@ -583,9 +584,46 @@ static int parse_args(int argc, char **argv)
 
     return optind;
 }
+// code to be emulated
+#define CODE "e1a00000" // INC ecx; DEC edx
+
+// memory address where emulation starts
+#define ADDRESS 0x1000000
+
+static int uc_emu(void)
+{
+  uc_engine *uc;
+  uc_err err;
+
+
+  err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &uc);
+  printf("Opened\n");
+  if (err != UC_ERR_OK) {
+    printf("Failed on uc_open() with error returned: %u\n", err);
+    return -1;
+  }
+
+  // map 2MB memory for this emulation
+  uc_mem_map(uc, ADDRESS, 2 * 1024 * 1024, UC_PROT_ALL);
+
+  // write machine code to be emulated to memory
+  if (uc_mem_write(uc, ADDRESS, CODE, sizeof(CODE) - 1)) {
+    printf("Failed to write emulation code to memory, quit!\n");
+    return -1;
+  }
+
+  // initialize machine registers
+  // emulate code in infinite time & unlimited instructions
+
+  CPUArchState *env = uc_toto(uc);
+  cpu_loop(env);
+
+  return 0;
+}
 
 int main(int argc, char **argv, char **envp)
 {
+    uc_emu();
     struct target_pt_regs regs1, *regs = &regs1;
     struct image_info info1, *info = &info1;
     struct linux_binprm bprm;
@@ -777,6 +815,7 @@ int main(int argc, char **argv, char **envp)
     }
 
     g_free(target_environ);
+    uc_free(NULL);
 
     if (qemu_loglevel_mask(CPU_LOG_PAGE)) {
         qemu_log("guest_base  0x%lx\n", guest_base);
@@ -816,6 +855,15 @@ int main(int argc, char **argv, char **envp)
         }
         gdb_handlesig(cpu, 0);
     }
+    uc_err err;
+    uc_engine *uc;
+    err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &uc);
+    if (err != UC_ERR_OK)
+    {
+       fprintf(stderr, "Failed on uc_open() with error returned: %u\n", err);
+       return -1;
+    }
+
     cpu_loop(env);
     /* never exits */
     return 0;
