@@ -585,7 +585,7 @@ static int parse_args(int argc, char **argv)
     return optind;
 }
 // code to be emulated
-#define CODE "e1a00000" // INC ecx; DEC edx
+#define CODE "\xe1\xa0\x00\x00\xe1\xa0\x00\x00"
 
 // memory address where emulation starts
 #define ADDRESS 0x1000000
@@ -611,13 +611,19 @@ static int uc_emu(void)
     printf("Failed to write emulation code to memory, quit!\n");
     return -1;
   }
-
+  err=uc_emu_start(uc, ADDRESS, ADDRESS + sizeof(CODE) - 1 - 4, 0, 0);
+  if (err) {
+    printf("Failed on uc_emu_start() with error returned %u: %s\n",
+    err, uc_strerror(err));
+  }
   // initialize machine registers
   // emulate code in infinite time & unlimited instructions
 
-  CPUArchState *env = uc_toto(uc);
+  CPUArchState *env = uc_get_env(uc);
+  ObjectClass *cc = uc_get_class(uc);
+  CPUState *cs = CPU(arm_env_get_cpu(env));
+  OBJECT(cs)->class = cc;
   cpu_loop(env);
-
   return 0;
 }
 
