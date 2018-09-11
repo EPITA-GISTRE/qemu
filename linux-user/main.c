@@ -38,6 +38,7 @@
 #include "trace/control.h"
 #include "target_elf.h"
 #include "cpu_loop-common.h"
+#include "qom/cpu.h"
 
 char *exec_path;
 
@@ -590,6 +591,10 @@ static int parse_args(int argc, char **argv)
 // memory address where emulation starts
 #define ADDRESS 0x1000000
 
+static void cpu_common_noop(CPUState* cp)
+{
+}
+
 static int uc_emu(void)
 {
   uc_engine *uc;
@@ -621,7 +626,11 @@ static int uc_emu(void)
 
   CPUArchState *env = uc_get_env(uc);
   ObjectClass *cc = uc_get_class(uc);
+  char **type = (char**)cc->type;
+  *type = (char*)TYPE_CPU;
   CPUState *cs = CPU(arm_env_get_cpu(env));
+  ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
+  ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;
   cpu_loop(env);
   return 0;
