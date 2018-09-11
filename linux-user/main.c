@@ -21,7 +21,7 @@
 #include "qemu-version.h"
 #include <sys/syscall.h>
 #include <sys/resource.h>
-#include <unicorn/unicorn.h>
+#include <unicorn.h>
 
 #include "qapi/error.h"
 #include "qemu.h"

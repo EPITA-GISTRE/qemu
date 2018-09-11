@@ -7306,8 +7306,8 @@ fi
 
 # generate QEMU_CFLAGS/LDFLAGS for targets
 
-cflags="-I/home/turnt/raspoutine-poc-unicorn/unicorn/include"
-ldflags="-L/home/turnt/raspoutine-poc-unicorn/unicorn -lunicorn"
+cflags="-I/home/saille_r/epita/gistre/pfe/unicorn/include/unicorn"
+ldflags="-L/home/saille_r/epita/gistre/pfe/unicorn -lunicorn"
 
 disas_config() {
   echo "CONFIG_${1}_DIS=y" >> $config_target_mak
