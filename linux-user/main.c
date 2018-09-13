@@ -654,6 +654,7 @@ static int uc_emu(void)
   char **type = (char**)cc->type;
   *type = (char*)TYPE_CPU;
   CPUState *cs = CPU(arm_env_get_cpu(env));
+  cs->exception_index = -1;
   ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
   ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;
