@@ -657,7 +657,7 @@ static int uc_emu(void)
   ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
   ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;
-  set_start_addr(env, ADDRESS);
+  set_start_addr(env, ADDRESS + 0x21c);
   cpu_loop(env);
 
   close(fd);
