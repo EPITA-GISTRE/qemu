@@ -595,10 +595,40 @@ static void cpu_common_noop(CPUState* cp)
 {
 }
 
+static void set_start_addr(CPUArchState *env, uint64_t start_addr)
+{
+  env->pc = start_addr;
+}
+
+static void *mmap_file(int fd, size_t file_size)
+{
+    void *res = mmap(0, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (res == MAP_FAILED)
+    {
+        fprintf(stderr, "MMAP failed\n");
+        return NULL;
+    }
+    return res;
+}
+
 static int uc_emu(void)
 {
   uc_engine *uc;
   uc_err err;
+  int fd = open("out.bin", O_RDWR);
+  if (fd < 0)
+  {
+    fprintf(stderr, "Bad Fd\n");
+    return -1;
+  }
+  struct stat status;
+  int ret = fstat(fd, &status);
+  if (ret < 0)
+  {
+    fprintf(stderr, "Failed to stat\n");
+    return -1;
+  }
+  void *mapped_file = mmap_file(fd, status.st_size);
 
 
   err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &uc);
@@ -612,14 +642,9 @@ static int uc_emu(void)
   uc_mem_map(uc, ADDRESS, 2 * 1024 * 1024, UC_PROT_ALL);
 
   // write machine code to be emulated to memory
-  if (uc_mem_write(uc, ADDRESS, CODE, sizeof(CODE) - 1)) {
+  if (uc_mem_write(uc, ADDRESS, mapped_file, status.st_size - 1)) {
     printf("Failed to write emulation code to memory, quit!\n");
     return -1;
-  }
-  err=uc_emu_start(uc, ADDRESS, ADDRESS + sizeof(CODE) - 1 - 4, 0, 0);
-  if (err) {
-    printf("Failed on uc_emu_start() with error returned %u: %s\n",
-    err, uc_strerror(err));
   }
   // initialize machine registers
   // emulate code in infinite time & unlimited instructions
@@ -632,7 +657,10 @@ static int uc_emu(void)
   ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
   ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;
+  set_start_addr(env, ADDRESS);
   cpu_loop(env);
+
+  close(fd);
   return 0;
 }
 
@@ -870,15 +898,6 @@ int main(int argc, char **argv, char **envp)
         }
         gdb_handlesig(cpu, 0);
     }
-    uc_err err;
-    uc_engine *uc;
-    err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &uc);
-    if (err != UC_ERR_OK)
-    {
-       fprintf(stderr, "Failed on uc_open() with error returned: %u\n", err);
-       return -1;
-    }
-
     cpu_loop(env);
     /* never exits */
     return 0;
