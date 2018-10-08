@@ -706,7 +706,11 @@ int cpu_exec(CPUState *cpu)
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
-        while (!cpu_handle_interrupt(cpu, &last_tb)) {
+        printf("before\n");
+        bool test = cpu_handle_interrupt(cpu, &last_tb);
+        printf("test: %d\n", test);
+        while (!test) {
+            printf("handle irq\n");
             uint32_t cflags = cpu->cflags_next_tb;
             TranslationBlock *tb;
 
@@ -716,8 +720,10 @@ int cpu_exec(CPUState *cpu)
                have CF_INVALID set, -1 is a convenient invalid value that
                does not require tcg headers for cpu_common_reset.  */
             if (cflags == -1) {
+                printf("cflags -1\n");
                 cflags = curr_cflags();
             } else {
+                printf("cflags \n");
                 cpu->cflags_next_tb = -1;
             }
 

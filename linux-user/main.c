@@ -610,6 +610,7 @@ static void *mmap_file(int fd, size_t file_size)
     }
     return res;
 }
+#define OFF_MAIN 0x21c
 
 static int uc_emu(void)
 {
@@ -654,11 +655,23 @@ static int uc_emu(void)
   char **type = (char**)cc->type;
   *type = (char*)TYPE_CPU;
   CPUState *cs = CPU(arm_env_get_cpu(env));
+  //cs->cflags_next_tb = -1;
   cs->exception_index = -1;
+  cs->interrupt_request = 0;
   ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
   ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;
-  set_start_addr(env, ADDRESS + 0x21c);
+  set_start_addr(env, ADDRESS + OFF_MAIN);
+
+  thread_cpu = cs;
+
+  //err=uc_emu_start(uc, ADDRESS + OFF_MAIN, ADDRESS + OFF_MAIN + 4, 0, 0);
+  syscall_init();
+  signal_init();
+
+  tcg_exec_init(0);
+  tcg_prologue_init(tcg_ctx);
+  tcg_region_init();
   cpu_loop(env);
 
   close(fd);
