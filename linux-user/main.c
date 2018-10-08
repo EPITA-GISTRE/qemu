@@ -658,6 +658,7 @@ static int uc_emu(void)
   //cs->cflags_next_tb = -1;
   cs->exception_index = -1;
   cs->interrupt_request = 0;
+  cs->env_ptr = env;
   ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
   ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;
