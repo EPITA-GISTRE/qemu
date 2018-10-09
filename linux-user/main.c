@@ -651,6 +651,8 @@ static int uc_emu(void)
   // emulate code in infinite time & unlimited instructions
 
   CPUArchState *env = uc_get_env(uc);
+  env->reg[15] = ADDRESS + OFF_MAIN;
+  env->pc = ADDRESS + OFF_MAIN;
   ObjectClass *cc = uc_get_class(uc);
   char **type = (char**)cc->type;
   *type = (char*)TYPE_CPU;
