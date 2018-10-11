@@ -40,6 +40,8 @@
 #include "cpu_loop-common.h"
 #include "qom/cpu.h"
 #include "exec/ram_addr.h"
+#include "tcg/tcg-op.h"
+#include "target/arm/translate.h"
 
 typedef uintptr_t ram_addr_t;
 struct RAMBlock {
@@ -637,7 +639,8 @@ static void *mmap_file(int fd, size_t file_size)
     return res;
 }
 
-#define OFF_MAIN 0x21c
+
+#define OFF_MAIN 0x2ec
 
 static int uc_emu(void)
 {
@@ -669,10 +672,9 @@ static int uc_emu(void)
 
   // map 2MB memory for this emulation
   uc_mem_map_ptr(uc, ADDRESS, 2 * 1024 * 1024, UC_PROT_ALL, mapped_file);
-
   CPUArchState *env = uc_get_env(uc);
-  env->regs[15] = (uintptr_t)mapped_file;
-  env->pc = (uint64_t)mapped_file;
+  env->regs[15] = (uintptr_t)((char*)mapped_file + OFF_MAIN);
+  env->pc = (uint64_t)((char*)mapped_file + OFF_MAIN);
   ObjectClass *cc = uc_get_class(uc);
   char **type = (char**)cc->type;
   *type = (char*)TYPE_CPU;
@@ -691,6 +693,7 @@ static int uc_emu(void)
   tcg_exec_init(0);
   tcg_prologue_init(tcg_ctx);
   tcg_region_init();
+  a64_translate_init();//init cpu_X register.
   cpu_loop(env);
 
   close(fd);
