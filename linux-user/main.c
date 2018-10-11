@@ -39,6 +39,37 @@
 #include "target_elf.h"
 #include "cpu_loop-common.h"
 #include "qom/cpu.h"
+#include "exec/ram_addr.h"
+
+typedef uintptr_t ram_addr_t;
+struct RAMBlock {
+    struct rcu_head rcu;
+    struct MemoryRegion *mr;
+    uint8_t *host;
+    ram_addr_t offset;
+    ram_addr_t used_length;
+    ram_addr_t max_length;
+    void (*resized)(const char*, uint64_t length, void *host);
+    uint32_t flags;
+    /* Protected by iothread lock.  */
+    char idstr[256];
+    /* RCU-enabled, writes protected by the ramlist lock */
+    QLIST_ENTRY(RAMBlock) next;
+    QLIST_HEAD(, RAMBlockNotifier) ramblock_notifiers;
+    int fd;
+    size_t page_size;
+    /* dirty bitmap used during migration */
+    unsigned long *bmap;
+    /* bitmap of pages that haven't been sent even once
+     * only maintained and used in postcopy at the moment
+     * where it's used to send the dirtymap at the start
+     * of the postcopy phase
+     */
+    unsigned long *unsentmap;
+    /* bitmap of already received pages in postcopy */
+    unsigned long *receivedmap;
+};
+#include "qemu/typedefs.h"
 
 char *exec_path;
 
@@ -595,11 +626,6 @@ static void cpu_common_noop(CPUState* cp)
 {
 }
 
-static void set_start_addr(CPUArchState *env, uint64_t start_addr)
-{
-  env->pc = start_addr;
-}
-
 static void *mmap_file(int fd, size_t file_size)
 {
     void *res = mmap(0, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -610,6 +636,7 @@ static void *mmap_file(int fd, size_t file_size)
     }
     return res;
 }
+
 #define OFF_MAIN 0x21c
 
 static int uc_emu(void)
@@ -631,8 +658,9 @@ static int uc_emu(void)
   }
   void *mapped_file = mmap_file(fd, status.st_size);
 
+  printf("addr file: %p\n", mapped_file);
 
-  err = uc_open(UC_ARCH_ARM, UC_MODE_ARM, &uc);
+  err = uc_open(UC_ARCH_ARM64, UC_MODE_ARM, &uc);
   printf("Opened\n");
   if (err != UC_ERR_OK) {
     printf("Failed on uc_open() with error returned: %u\n", err);
@@ -640,19 +668,11 @@ static int uc_emu(void)
   }
 
   // map 2MB memory for this emulation
-  uc_mem_map(uc, ADDRESS, 2 * 1024 * 1024, UC_PROT_ALL);
-
-  // write machine code to be emulated to memory
-  if (uc_mem_write(uc, ADDRESS, mapped_file, status.st_size - 1)) {
-    printf("Failed to write emulation code to memory, quit!\n");
-    return -1;
-  }
-  // initialize machine registers
-  // emulate code in infinite time & unlimited instructions
+  uc_mem_map_ptr(uc, ADDRESS, 2 * 1024 * 1024, UC_PROT_ALL, mapped_file);
 
   CPUArchState *env = uc_get_env(uc);
-  env->regs[15] = ADDRESS + OFF_MAIN;
-  env->pc = ADDRESS + OFF_MAIN;
+  env->regs[15] = (uintptr_t)mapped_file;
+  env->pc = (uint64_t)mapped_file;
   ObjectClass *cc = uc_get_class(uc);
   char **type = (char**)cc->type;
   *type = (char*)TYPE_CPU;
@@ -664,11 +684,7 @@ static int uc_emu(void)
   ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
   ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;
-  set_start_addr(env, ADDRESS + OFF_MAIN);
-
   thread_cpu = cs;
-
-  //err=uc_emu_start(uc, ADDRESS + OFF_MAIN, ADDRESS + OFF_MAIN + 4, 0, 0);
   syscall_init();
   signal_init();
 
