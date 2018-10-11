@@ -37,6 +37,7 @@
 
 #include "trace-tcg.h"
 #include "translate-a64.h"
+#include "target/arm/translate.h"
 
 static TCGv_i64 cpu_X[32];
 static TCGv_i64 cpu_pc;
@@ -3586,6 +3587,7 @@ static void disas_movw_imm(DisasContext *s, uint32_t insn)
         if (!sf) {
             imm &= 0xffffffffu;
         }
+        printf("tcg_rd: %p\n", tcg_rd);
         tcg_gen_movi_i64(tcg_rd, imm);
         break;
     case 3: /* MOVK */

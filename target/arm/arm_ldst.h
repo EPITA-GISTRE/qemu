@@ -27,6 +27,9 @@
 static inline uint32_t arm_ldl_code(CPUARMState *env, target_ulong addr,
                                     bool sctlr_b)
 {
+    printf("env: %p\n", env);
+    printf("arm_ldl_code addr: %lx\n", addr);
+    printf("addr cpu_ldl_code: %p\n", cpu_ldl_code);
     uint32_t insn = cpu_ldl_code(env, addr);
     if (bswap_code(sctlr_b)) {
         return bswap32(insn);

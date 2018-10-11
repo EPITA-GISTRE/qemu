@@ -5,4 +5,5 @@
 #   add-auto-load-safe-path /path/to/qemu/.gdbinit
 
 # Load QEMU-specific sub-commands and settings
+set environment LD_PRELOAD /home/turnt/pfe/unicorn/libunicorn.so
 source scripts/qemu-gdb.py

@@ -541,6 +541,7 @@ static inline void tcg_gen_mov_i64(TCGv_i64 ret, TCGv_i64 arg)
 
 static inline void tcg_gen_movi_i64(TCGv_i64 ret, int64_t arg)
 {
+    printf("tamere: %p\n", ret);
     tcg_gen_op2i_i64(INDEX_op_movi_i64, ret, arg);
 }
 

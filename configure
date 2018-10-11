@@ -377,7 +377,7 @@ rdma=""
 pvrdma=""
 gprof="no"
 debug_tcg="yes"
-debug="no"
+debug="yes"
 sanitizers="no"
 fortify_source=""
 strip_opt="yes"
@@ -443,7 +443,7 @@ libiscsi=""
 libnfs=""
 coroutine=""
 coroutine_pool=""
-debug_stack_usage="no"
+debug_stack_usage="yes"
 crypto_afalg="no"
 seccomp=""
 glusterfs=""
@@ -7301,8 +7301,8 @@ fi
 
 [ -z $UNICORN ] && echo "Set UNICORN to your unicorn repository" && exit 1
 
-cflags="-I/$UNICORN/include/unicorn"
-ldflags="-L/$UNICORN -lunicorn"
+cflags="-I$UNICORN/include/unicorn"
+ldflags="-L$UNICORN -lunicorn"
 
 disas_config() {
   echo "CONFIG_${1}_DIS=y" >> $config_target_mak

@@ -729,7 +729,10 @@ extern TCGv_env cpu_env;
 
 static inline size_t temp_idx(TCGTemp *ts)
 {
+    printf("temps: %p\n", tcg_ctx->temps);
+    printf("temps-ts: %p\n", ts);
     ptrdiff_t n = ts - tcg_ctx->temps;
+    printf("n: %lu\n", n);
     tcg_debug_assert(n >= 0 && n < tcg_ctx->nb_temps);
     return n;
 }
