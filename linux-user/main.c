@@ -640,10 +640,13 @@ static void *mmap_file(int fd, size_t file_size)
 }
 
 
+#define ADDRESS 0x1000000
 #define OFF_MAIN 0x2ec
+#define STACK_ADDR  ADDRESS + 0x1000
 
 static int uc_emu(void)
 {
+  int my_stack[100];
   uc_engine *uc;
   uc_err err;
   int fd = open("out.bin", O_RDWR);
@@ -669,16 +672,17 @@ static int uc_emu(void)
     printf("Failed on uc_open() with error returned: %u\n", err);
     return -1;
   }
-
   // map 2MB memory for this emulation
   uc_mem_map_ptr(uc, ADDRESS, 2 * 1024 * 1024, UC_PROT_ALL, mapped_file);
   CPUArchState *env = uc_get_env(uc);
   env->regs[15] = (uintptr_t)((char*)mapped_file + OFF_MAIN);
+  env->xregs[31] = (uint64_t)my_stack;
   env->pc = (uint64_t)((char*)mapped_file + OFF_MAIN);
   ObjectClass *cc = uc_get_class(uc);
   char **type = (char**)cc->type;
   *type = (char*)TYPE_CPU;
   CPUState *cs = CPU(arm_env_get_cpu(env));
+  cs->singlestep_enabled = 0;
   //cs->cflags_next_tb = -1;
   cs->exception_index = -1;
   cs->interrupt_request = 0;
