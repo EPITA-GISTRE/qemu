@@ -618,11 +618,6 @@ static int parse_args(int argc, char **argv)
 
     return optind;
 }
-// code to be emulated
-#define CODE "\xe1\xa0\x00\x00\xe1\xa0\x00\x00"
-
-// memory address where emulation starts
-#define ADDRESS 0x1000000
 
 static void cpu_common_noop(CPUState* cp)
 {
@@ -630,23 +625,35 @@ static void cpu_common_noop(CPUState* cp)
 
 static void *mmap_file(int fd, size_t file_size)
 {
-    void *res = mmap(0, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    void *res = mmap((void*)0x400000, 0x80e87, PROT_READ | PROT_EXEC,
+                     MAP_PRIVATE | MAP_FIXED, fd, 0);
+
     if (res == MAP_FAILED)
     {
         fprintf(stderr, "MMAP failed\n");
         return NULL;
     }
+
+    void *mmap_data = mmap((void*)0x480000 - 0xe80
+            , 6663 + 0xe80, PROT_NONE, MAP_PRIVATE , fd, 0x80000);
+
+    if (mmap_data == MAP_FAILED)
+    {
+        perror("tadaronne");
+        fprintf(stderr, "MMAP failed\n");
+        return NULL;
+    }
+    printf("file_size: %lu\n", file_size);
     return res;
 }
 
 
-#define ADDRESS 0x1000000
 #define OFF_MAIN 0x2ec
-#define STACK_ADDR  ADDRESS + 0x1000
 
 static int uc_emu(void)
 {
-  int my_stack[100];
+  #define STACK_SIZE 100000000
+  int *my_stack = g_malloc(STACK_SIZE * sizeof(int));
   uc_engine *uc;
   uc_err err;
   int fd = open("out.bin", O_RDWR);
@@ -662,6 +669,7 @@ static int uc_emu(void)
     fprintf(stderr, "Failed to stat\n");
     return -1;
   }
+  printf("size: %lx\n", status.st_size);
   void *mapped_file = mmap_file(fd, status.st_size);
 
   printf("addr file: %p\n", mapped_file);
@@ -672,21 +680,24 @@ static int uc_emu(void)
     printf("Failed on uc_open() with error returned: %u\n", err);
     return -1;
   }
-  // map 2MB memory for this emulation
-  uc_mem_map_ptr(uc, ADDRESS, 2 * 1024 * 1024, UC_PROT_ALL, mapped_file);
   CPUArchState *env = uc_get_env(uc);
-  env->regs[15] = (uintptr_t)((char*)mapped_file + OFF_MAIN);
-  env->xregs[31] = (uint64_t)my_stack;
+  env->xregs[31] = (uint64_t)(my_stack + STACK_SIZE);
   env->pc = (uint64_t)((char*)mapped_file + OFF_MAIN);
+  env->aarch64 = 1;
+  CPUState *cs = CPU(arm_env_get_cpu(env));
   ObjectClass *cc = uc_get_class(uc);
   char **type = (char**)cc->type;
   *type = (char*)TYPE_CPU;
-  CPUState *cs = CPU(arm_env_get_cpu(env));
   cs->singlestep_enabled = 0;
+  cs->breakpoints.tqh_last = NULL;
+  cs->breakpoints.tqh_first = NULL;
+
   //cs->cflags_next_tb = -1;
   cs->exception_index = -1;
   cs->interrupt_request = 0;
   cs->env_ptr = env;
+  for (size_t i = 0; i < 4096; ++i)
+      cs->tb_jmp_cache[i] = NULL;
   ((CPUClass*)cc)->cpu_exec_enter = cpu_common_noop;
   ((CPUClass*)cc)->cpu_exec_exit = cpu_common_noop;
   OBJECT(cs)->class = cc;

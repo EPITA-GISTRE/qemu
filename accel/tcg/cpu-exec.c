@@ -706,13 +706,11 @@ int cpu_exec(CPUState *cpu)
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
-        printf("before\n");
         bool test = cpu_handle_interrupt(cpu, &last_tb);
-        printf("test: %d\n", test);
         while (!test) {
-            printf("handle irq\n");
             uint32_t cflags = cpu->cflags_next_tb;
             TranslationBlock *tb;
+            
 
             /* When requested, use an exact setting for cflags for the next
                execution.  This is used for icount, precise smc, and stop-
